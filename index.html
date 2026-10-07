@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Điểm Danh Trường Học Nội Bộ</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- SweetAlert2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            --present-color: #198754;
+            --absent-color: #dc3545;
+            --late-color: #ffc107;
+            --excused-color: #6c757d;
+        }
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+        }
+        .navbar-custom {
+            background: var(--primary-gradient);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .card-custom {
+            border: none;
+            border-radius: 14px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            background: #ffffff;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .role-badge {
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        /* Student Attendance Card */
+        .student-card {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease-in-out;
+            border-radius: 12px;
+            border: 2px solid transparent;
+        }
+        .student-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        .status-present {
+            background-color: #e8f5e9;
+            border-color: #2e7d32 !important;
+            color: #1b5e20;
+        }
+        .status-absent {
+            background-color: #ffebee;
+            border-color: #c62828 !important;
+            color: #b71c1c;
+        }
+        .status-late {
+            background-color: #fffde7;
+            border-color: #f57f17 !important;
+            color: #e65100;
+        }
+        .status-excused {
+            background-color: #f5f5f5;
+            border-color: #757575 !important;
+            color: #424242;
+        }
+        .qr-pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        .network-pill {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 50px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top">
+        <div class="container-fluid px-3 px-md-4">
+            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="#">
+                <i class="bi bi-mortarboard-fill fs-3 text-warning"></i>
+                <div class="lh-sm">
+                    <div>EDU-ATTEND PRO</div>
+                    <small class="fs-7 fw-normal opacity-75">Hệ Thống Điểm Danh Nội Bộ</small>
+                </div>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navContent">
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-2 mt-3 mt-lg-0">
+                    <!-- Network Simulation Switcher -->
+                    <li class="nav-item">
+                        <div class="bg-light bg-opacity-25 p-1 px-3 rounded-pill d-flex align-items-center gap-2 text-white">
+                            <i class="bi bi-wifi" id="wifi-icon"></i>
+                            <span class="small" id="wifi-label">Wi-Fi: Trường Học (192.168.1.45)</span>
+                            <button class="btn btn-xs btn-outline-light py-0 px-2 rounded-pill fs-7" onclick="toggleNetwork()">Đổi Wi-Fi</button>
+                        </div>
+                    </li>
+                    <!-- Role Switcher -->
+                    <li class="nav-item d-flex align-items-center gap-2 text-white ms-lg-3">
+                        <i class="bi bi-person-badge fs-5"></i>
+                        <span class="small fw-semibold">Đăng nhập:</span>
+                        <select class="form-select form-select-sm bg-white fw-bold text-dark w-auto" id="roleSelector" onchange="switchRole(this.value)">
+                            <option value="admin">Quản Trị Viên (Admin)</option>
+                            <option value="teacher" selected>Giáo Viên (Bộ môn / CN)</option>
+                            <option value="student">Học Sinh</option>
+                        </select>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container-fluid py-4 px-3 px-md-4">
+
+        <!-- ==================== VIEW 1: ADMIN ==================== -->
+        <div id="view-admin" class="d-none">
+            <!-- Header Summary -->
+            <div class="row g-3 mb-4">
+                <div class="col-12 col-md-8">
+                    <h3 class="fw-bold text-primary mb-1"><i class="bi bi-speedometer2 me-2"></i>Bảng Điều Khiển Tổng Quan - Ban Giám Hiệu</h3>
+                    <p class="text-muted mb-0">Giám sát chuyên cần 21 lớp học toàn trường trong thời gian thực (Lưu RAM an toàn 100%).</p>
+                </div>
+                <div class="col-12 col-md-4 text-md-end d-flex align-items-center justify-content-md-end gap-2">
+                    <button class="btn btn-success fw-bold d-flex align-items-center gap-2 shadow-sm" onclick="exportExcelReport('week')">
+                        <i class="bi bi-file-earmark-excel-fill"></i> Xuất Báo Cáo Tuần (Bộ GD&ĐT)
+                    </button>
+                    <button class="btn btn-outline-success fw-bold shadow-sm" onclick="exportExcelReport('month')">
+                        Báo Cáo Tháng
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="row g-3 mb-4" id="admin-summary-cards">
+                <!-- Injected via JS -->
+            </div>
+
+            <!-- Grid 21 Classes -->
+            <div class="card card-custom p-4 mb-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Thống Kê 21 Lớp Toàn Trường (Khối 10, 11, 12)</h5>
+                    <div class="input-group input-group-sm w-auto">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" id="adminSearchInput" class="form-control" placeholder="Tìm tên lớp..." onkeyup="filterAdminClasses()">
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle border" id="adminClassesTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Khối</th>
+                                <th>Lớp Học</th>
+                                <th>GV Chủ Nhiệm</th>
+                                <th>Sĩ Số</th>
+                                <th>Có Mặt</th>
+                                <th>Vắng / Muộn</th>
+                                <th>Có Phép</th>
+                                <th>Tỉ Lệ</th>
+                                <th>Trạng Thái</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminClassTableBody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== VIEW 2: GIÁO VIÊN ==================== -->
+        <div id="view-teacher">
+            <!-- Header Class Control -->
+            <div class="card card-custom p-3 p-md-4 mb-4">
+                <div class="row g-3 align-items-center">
+                    <div class="col-12 col-md-5">
+                        <div class="d-flex align-items-center gap-3">
+                            <label class="fw-bold text-nowrap"><i class="bi bi-journal-check text-primary me-1"></i>Chọn Lớp:</label>
+                            <select class="form-select fw-bold" id="teacherClassSelect" onchange="changeTeacherClass(this.value)">
+                                <!-- Filled by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-7 text-md-end d-flex flex-wrap justify-content-md-end gap-2">
+                        <button class="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm" onclick="openQRSession()">
+                            <i class="bi bi-qr-code-scan"></i> Mở Phiên Điểm Danh QR
+                        </button>
+                        <button class="btn btn-outline-secondary d-flex align-items-center gap-1" onclick="markAllPresent()">
+                            <i class="bi bi-check-all"></i> Đánh Dấu Có Mặt Tất Cả
+                        </button>
+                        <button class="btn btn-outline-primary d-flex align-items-center gap-1" onclick="showLeaveRequestsModal()">
+                            <i class="bi bi-envelope-paper"></i> Duyệt Đơn Nghỉ (<span id="teacherLeaveBadge">1</span>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notice & Legend -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center bg-white p-3 rounded-3 shadow-sm mb-3 gap-2">
+                <div class="d-flex align-items-center gap-2 text-muted small">
+                    <i class="bi bi-info-circle-fill text-primary"></i>
+                    <span><strong>Hướng dẫn:</strong> Bấm trực tiếp vào từng học sinh để đổi nhanh trạng thái vòng tròn: <strong>Có mặt</strong> &rarr; <strong>Vắng</strong> &rarr; <strong>Muộn</strong> &rarr; <strong>Có phép</strong>.</span>
+                </div>
+                <div class="d-flex flex-wrap gap-2 small">
+                    <span class="badge status-present px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i>Có mặt</span>
+                    <span class="badge status-absent px-2 py-1"><i class="bi bi-x-circle-fill me-1"></i>Vắng</span>
+                    <span class="badge status-late px-2 py-1"><i class="bi bi-clock-fill me-1"></i>Muộn</span>
+                    <span class="badge status-excused px-2 py-1"><i class="bi bi-file-earmark-medical-fill me-1"></i>Vắng có phép</span>
+                </div>
+            </div>
+
+            <!-- Attendance Grid -->
+            <div class="row g-3" id="studentGridContainer">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- ==================== VIEW 3: HỌC SINH ==================== -->
+        <div id="view-student" class="d-none">
+            <div class="row g-4">
+                <!-- Student Action Column -->
+                <div class="col-12 col-lg-5">
+                    <!-- Student Profile & Quick Check-in -->
+                    <div class="card card-custom p-4 mb-4">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-3" style="width: 60px; height: 60px;">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <div>
+                                <h5 class="fw-bold mb-0" id="currentStudentName">Nguyễn Văn An</h5>
+                                <div class="text-muted small">Mã HS: <strong>HS10A1-01</strong> | Lớp: <strong>10A1</strong></div>
+                                <span class="badge bg-success-subtle text-success border border-success mt-1">Đang Theo Học</span>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="text-center p-3 border rounded-3 bg-light mb-3">
+                            <div class="text-secondary small mb-1">Trạng thái điểm danh hôm nay:</div>
+                            <h4 class="fw-bold mb-0 text-success" id="todayStatusText"><i class="bi bi-check-circle-fill me-1"></i> ĐÃ ĐIỂM DANH CÓ MẶT</h4>
+                            <div class="text-muted fs-7 mt-1" id="todayCheckinTime">Ghi nhận: Hôm nay lúc 07:15:30</div>
+                        </div>
+
+                        <!-- Checkin Button -->
+                        <button class="btn btn-primary btn-lg w-100 fw-bold py-3 shadow d-flex align-items-center justify-content-center gap-2" onclick="studentPerformCheckin()">
+                            <i class="bi bi-geo-alt-fill fs-4"></i> Xác Nhận Điểm Danh Nhanh Tại Lớp
+                        </button>
+                        <small class="text-muted d-block text-center mt-2">
+                            <i class="bi bi-shield-check text-success"></i> Yêu cầu kết nối Wi-Fi Trường học (192.168.1.x) để xác thực.
+                        </small>
+                    </div>
+
+                    <!-- Submit Leave Request -->
+                    <div class="card card-custom p-4">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-envelope-paper-heart-fill text-danger me-2"></i>Gửi Đơn Xin Nghỉ Phép Trực Tuyến</h6>
+                        <form id="leaveRequestForm" onsubmit="handleStudentSubmitLeave(event)">
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Chọn học sinh nộp đơn:</label>
+                                <select class="form-select form-select-sm" id="studentLeaveSelect">
+                                    <option value="HS10A1-03">Lê Hoàng Cúc (học_sinh_c - Lớp 10A1)</option>
+                                    <option value="HS10A1-01">Nguyễn Văn An (HS10A1-01)</option>
+                                    <option value="HS10A1-02">Trần Thị Bích (HS10A1-02)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Lý do nghỉ phép:</label>
+                                <input type="text" class="form-control form-control-sm" id="leaveReason" placeholder="Vd: Sốt xuất huyết đi khám bệnh, việc gia đình..." required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Ngày nghỉ:</label>
+                                <input type="date" class="form-control form-control-sm" id="leaveDate" required>
+                            </div>
+                            <button type="submit" class="btn btn-outline-danger w-100 fw-semibold">
+                                <i class="bi bi-send-fill me-1"></i> Gửi Đơn Xin Nghỉ Cho Giáo Viên
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Monthly Attendance History -->
+                <div class="col-12 col-lg-7">
+                    <div class="card card-custom p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-calendar3-week text-primary me-2"></i>Lịch Sử Chuyên Cần Trong Tháng</h5>
+                            <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2">Tháng Hiện Tại</span>
+                        </div>
+                        <p class="text-muted small">Chi tiết theo dõi chấm công và rèn luyện đạo đức theo từng ngày học.</p>
+
+                        <div class="row g-2 mb-3 text-center">
+                            <div class="col-4">
+                                <div class="p-2 border rounded bg-success-subtle text-success">
+                                    <div class="fs-4 fw-bold" id="histCountPresent">22</div>
+                                    <div class="fs-7 fw-semibold">Buổi Có Mặt</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 border rounded bg-warning-subtle text-warning-emphasis">
+                                    <div class="fs-4 fw-bold" id="histCountLate">1</div>
+                                    <div class="fs-7 fw-semibold">Buổi Đi Muộn</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-2 border rounded bg-secondary-subtle text-secondary">
+                                    <div class="fs-4 fw-bold" id="histCountExcused">1</div>
+                                    <div class="fs-7 fw-semibold">Vắng Có Phép</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Ngày</th>
+                                        <th>Buổi</th>
+                                        <th>Trạng Thái</th>
+                                        <th>Giờ Ghi Nhận</th>
+                                        <th>Ghi Chú</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="studentHistoryTableBody">
+                                    <!-- Injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal QR Code -->
+    <div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-qr-code-scan me-2"></i>Phiên Điểm Danh Động - <span id="qrModalClass">10A1</span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <div class="alert alert-warning py-2 small d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-hourglass-split fs-5"></i>
+                        <span>Mã tự hủy sau: <strong class="fs-6 text-danger" id="qrTimer">05:00</strong></span>
+                    </div>
+
+                    <div class="p-3 bg-white d-inline-block border rounded shadow-sm mb-3">
+                        <img id="qrImageElement" src="" alt="Dynamic Attendance QR" class="img-fluid qr-pulse" style="width: 240px; height: 240px; object-fit: contain;">
+                    </div>
+
+                    <div class="small text-muted mb-2">
+                        Token phiên: <code id="qrTokenDisplay">TOKEN-123456</code>
+                    </div>
+                    <div class="p-2 bg-light rounded text-start fs-7 text-secondary">
+                        <i class="bi bi-info-circle me-1 text-primary"></i> <strong>Lưu ý:</strong> Học sinh mở camera điện thoại hoặc dùng nút "Xác nhận điểm danh nhanh" khi đang kết nối cùng mạng Wi-Fi trường để quét mã.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary" onclick="generateNewQRSession()">Làm mới mã QR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Duyệt đơn nghỉ phép -->
+    <div class="modal fade" id="leaveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-inbox-fill me-2"></i>Danh Sách Đơn Xin Nghỉ Phép Trực Tuyến</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Học sinh</th>
+                                    <th>Lớp</th>
+                                    <th>Ngày xin nghỉ</th>
+                                    <th>Lý do</th>
+                                    <th>Trạng thái</th>
+                                    <th class="text-end">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaveModalTableBody">
+                                <!-- Injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS & SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.all.min.js"></script>
+
+    <script>
+        /* =========================================================================
+           DỮ LIỆU TẠM THỜI TRONG BỘ NHỚ RAM (IN-MEMORY DATABASE)
+           Không lưu trữ ra disk hay server, an toàn 100%, bảo mật tuyệt đối.
+           ========================================================================= */
+        const SCHOOL_CONFIG = {
+            schoolName: "TRƯỜNG THPT CHUYÊN QUỐC GIA",
+            academicYear: "2025 - 2026",
+            validSubnet: "192.168.1." // Dải IP mạng nội bộ trường học
+        };
+
+        // Giả lập trạng thái mạng hiện tại của client
+        let currentClientNetwork = {
+            isSchoolWifi: true,
+            ip: "192.168.1.45",
+            ssid: "THPT_SCHOOL_INTERNAL_5G"
+        };
+
+        // Danh sách 21 lớp học toàn trường
+        const CLASS_NAMES = [
+            // Khối 10 (7 lớp)
+            "10A1", "10A2", "10A3", "10A4", "10A5", "10A6", "10A7",
+            // Khối 11 (7 lớp)
+            "11A1", "11A2", "11A3", "11A4", "11A5", "11A6", "11A7",
+            // Khối 12 (7 lớp)
+            "12A1", "12A2", "12A3", "12A4", "12A5", "12A6", "12A7"
+        ];
+
+        // Tên mẫu tiếng Việt
+        const SAMPLE_NAMES = [
+            "Nguyễn Văn An", "Trần Thị Bích", "Lê Hoàng Cúc", "Phạm Quốc Dũng", "Hoàng Thuỳ Dung",
+            "Đỗ Minh Đức", "Vũ Hải Đăng", "Bùi Kim Ngân", "Ngô Gia Bảo", "Đinh Ngọc Hân",
+            "Trương Công Thành", "Lý Thanh Thảo", "Võ Hoàng Nam", "Phan Thảo My", "Lâm Quốc Trung",
+            "Dương Tuyết Mai", "Hồ Minh Quân", "Tạ Phương Linh", "Cao Tiến Đạt", "Mai Cẩm Tú"
+        ];
+
+        // Khởi tạo cơ sở dữ liệu RAM cho 21 lớp
+        let memoryDatabase = {
+            classes: {},
+            leaveRequests: [
+                {
+                    id: "LR-001",
+                    studentId: "HS10A1-03", // Lê Hoàng Cúc (học_sinh_c)
+                    studentName: "Lê Hoàng Cúc",
+                    classId: "10A1",
+                    date: new Date().toISOString().split('T')[0],
+                    reason: "Bị sốt xuất huyết, có giấy chỉ định nghỉ của bệnh viện",
+                    status: "approved" // Đã duyệt trước theo yêu cầu đề bài
+                },
+                {
+                    id: "LR-002",
+                    studentId: "HS10A1-08",
+                    studentName: "Bùi Kim Ngân",
+                    classId: "10A1",
+                    date: new Date().toISOString().split('T')[0],
+                    reason: "Tham gia thi học sinh giỏi cấp Thành phố",
+                    status: "pending"
+                }
+            ],
+            qrSession: {
+                token: "",
+                expiresAt: 0,
+                intervalId: null
+            }
+        };
+
+        // Hàm tạo dữ liệu ngẫu nhiên cho 21 lớp khi khởi động
+        function initMemoryDatabase() {
+            CLASS_NAMES.forEach((cName, idx) => {
+                const grade = cName.substring(0, 2);
+                const students = [];
+                const classSize = 20; // 20 học sinh mỗi lớp
+
+                for (let i = 1; i <= classSize; i++) {
+                    const studentId = `HS${cName}-${i < 10 ? '0' + i : i}`;
+                    const studentName = SAMPLE_NAMES[(i - 1) % SAMPLE_NAMES.length];
+                    
+                    // Trạng thái mặc định: "present" (Có mặt)
+                    let status = "present";
+                    let note = "";
+
+                    // Kiểm tra nếu là học sinh có đơn nghỉ phép được duyệt trước (học_sinh_c: HS10A1-03)
+                    if (cName === "10A1" && studentId === "HS10A1-03") {
+                        status = "excused"; // Tự động thành "Vắng có phép"
+                        note = "Đơn nghỉ phép đã duyệt trước";
+                    } else if (i === 5 && cName !== "10A1") {
+                        status = "absent";
+                    } else if (i === 12 && cName !== "10A1") {
+                        status = "late";
+                    }
+
+                    students.push({
+                        id: studentId,
+                        name: studentName,
+                        gender: i % 2 === 0 ? "Nữ" : "Nam",
+                        status: status, // "present" | "absent" | "late" | "excused"
+                        note: note,
+                        checkinTime: status === "present" ? "07:15:20" : (status === "late" ? "07:42:10" : "--:--:--")
+                    });
+                }
+
+                memoryDatabase.classes[cName] = {
+                    className: cName,
+                    grade: grade,
+                    homeroomTeacher: `Thầy/Cô ${["Nguyễn Văn Toàn", "Trần Thị Mai", "Lê Văn Hùng", "Phạm Thị Nga", "Hoàng Kim Oanh"][idx % 5]}`,
+                    students: students
+                };
+            });
+        }
+
+        /* =========================================================================
+           ĐIỀU HƯỚNG VAI TRÒ (ROLE MANAGEMENT)
+           ========================================================================= */
+        let currentRole = "teacher";
+        let currentSelectedClass = "10A1";
+
+        function switchRole(role) {
+            currentRole = role;
+            document.getElementById('view-admin').classList.add('d-none');
+            document.getElementById('view-teacher').classList.add('d-none');
+            document.getElementById('view-student').classList.add('d-none');
+
+            if (role === 'admin') {
+                document.getElementById('view-admin').classList.remove('d-none');
+                renderAdminDashboard();
+            } else if (role === 'teacher') {
+                document.getElementById('view-teacher').classList.remove('d-none');
+                populateTeacherClassSelect();
+                renderTeacherStudentGrid();
+            } else if (role === 'student') {
+                document.getElementById('view-student').classList.remove('d-none');
+                renderStudentView();
+            }
+
+            Swal.fire({
+                icon: 'info',
+                title: 'Chuyển Đổi Phân Quyền',
+                text: `Bạn hiện đang thao tác với vai trò: ${role === 'admin' ? 'Quản Trị Viên (Toàn trường)' : (role === 'teacher' ? 'Giáo Viên' : 'Học Sinh')}`,
+                timer: 1200,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+        }
+
+        /* =========================================================================
+           GIẢ LẬP MẠNG & CHỐNG GIAN LẬN IP (ANTI-CHEAT SYSTEM)
+           ========================================================================= */
+        function toggleNetwork() {
+            currentClientNetwork.isSchoolWifi = !currentClientNetwork.isSchoolWifi;
+            const wifiIcon = document.getElementById('wifi-icon');
+            const wifiLabel = document.getElementById('wifi-label');
+
+            if (currentClientNetwork.isSchoolWifi) {
+                currentClientNetwork.ip = "192.168.1.45";
+                currentClientNetwork.ssid = "THPT_SCHOOL_INTERNAL_5G";
+                wifiLabel.textContent = `Wi-Fi: Trường Học (${currentClientNetwork.ip})`;
+                wifiIcon.className = "bi bi-wifi text-success";
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Đã Kết Nối Wi-Fi Trường Học',
+                    html: `<b>IP Hợp Lệ:</b> <code>${currentClientNetwork.ip}</code><br>Đã trong phạm vi định vị nội bộ của nhà trường.`,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                currentClientNetwork.ip = "14.162.180.201"; // IP Mạng di động 4G / Mạng nhà riêng ngoài trường
+                currentClientNetwork.ssid = "4G_LTE_Mobile_Internet";
+                wifiLabel.textContent = `Mạng Ngoài: 4G LTE (${currentClientNetwork.ip})`;
+                wifiIcon.className = "bi bi-wifi-off text-danger";
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Đã Rời Mạng Nội Bộ Trường',
+                    html: `<b>IP Bên Ngoài:</b> <code>${currentClientNetwork.ip}</code><br><span class="text-danger fw-bold">Hệ thống sẽ từ chối các lượt điểm danh từ dải mạng này!</span>`,
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+            }
+        }
+
+        function verifyInternalIP() {
+            return currentClientNetwork.ip.startsWith(SCHOOL_CONFIG.validSubnet);
+        }
+
+        /* =========================================================================
+           MODULE 1: QUẢN TRỊ VIÊN (ADMIN VIEW)
+           ========================================================================= */
+        function renderAdminDashboard() {
+            let totalStudents = 0;
+            let totalPresent = 0;
+            let totalAbsent = 0;
+            let totalLate = 0;
+            let totalExcused = 0;
+
+            const tableBody = document.getElementById('adminClassTableBody');
+            tableBody.innerHTML = '';
+
+            CLASS_NAMES.forEach(cName => {
+                const cls = memoryDatabase.classes[cName];
+                const sCount = cls.students.length;
+                let cPresent = 0, cAbsent = 0, cLate = 0, cExcused = 0;
+
+                cls.students.forEach(st => {
+                    if (st.status === 'present') cPresent++;
+                    else if (st.status === 'absent') cAbsent++;
+                    else if (st.status === 'late') cLate++;
+                    else if (st.status === 'excused') cExcused++;
+                });
+
+                totalStudents += sCount;
+                totalPresent += cPresent;
+                totalAbsent += cAbsent;
+                totalLate += cLate;
+                totalExcused += cExcused;
+
+                const percent = Math.round((cPresent / sCount) * 100);
+                const badgeColor = percent >= 95 ? 'bg-success' : (percent >= 80 ? 'bg-primary' : 'bg-danger');
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><span class="badge bg-secondary">Khối ${cls.grade}</span></td>
+                    <td class="fw-bold text-primary">${cls.className}</td>
+                    <td>${cls.homeroomTeacher}</td>
+                    <td><span class="fw-bold">${sCount}</span></td>
+                    <td><span class="badge bg-success-subtle text-success fs-7 fw-bold">${cPresent}</span></td>
+                    <td><span class="badge bg-danger-subtle text-danger fs-7 fw-bold">${cAbsent} / ${cLate}</span></td>
+                    <td><span class="badge bg-secondary-subtle text-secondary fs-7 fw-bold">${cExcused}</span></td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 6px;">
+                                <div class="progress-bar ${badgeColor}" style="width: ${percent}%"></div>
+                            </div>
+                            <span class="small fw-bold">${percent}%</span>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary py-0" onclick="quickJumpToClass('${cName}')">Xem Lớp</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // Thống kê thẻ tóm tắt
+            const summaryContainer = document.getElementById('admin-summary-cards');
+            const overallRate = Math.round((totalPresent / totalStudents) * 100);
+            summaryContainer.innerHTML = `
+                <div class="col-6 col-md-3">
+                    <div class="card card-custom p-3 border-start border-primary border-4">
+                        <div class="text-muted small fw-semibold">Tổng Sĩ Số Toàn Trường</div>
+                        <div class="fs-3 fw-bold text-primary">${totalStudents} <span class="fs-6 fw-normal text-muted">HS (21 Lớp)</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card card-custom p-3 border-start border-success border-4">
+                        <div class="text-muted small fw-semibold">Tổng Có Mặt Hiện Tại</div>
+                        <div class="fs-3 fw-bold text-success">${totalPresent} <span class="fs-6 fw-normal">(${overallRate}%)</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card card-custom p-3 border-start border-danger border-4">
+                        <div class="text-muted small fw-semibold">Tổng Vắng Mặt Không Phép</div>
+                        <div class="fs-3 fw-bold text-danger">${totalAbsent} <span class="fs-6 fw-normal text-muted">HS</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card card-custom p-3 border-start border-secondary border-4">
+                        <div class="text-muted small fw-semibold">Vắng Có Phép / Đi Muộn</div>
+                        <div class="fs-3 fw-bold text-secondary">${totalExcused} <span class="fs-6 fw-normal text-muted">/ ${totalLate} muộn</span></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function filterAdminClasses() {
+            const query = document.getElementById('adminSearchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#adminClassTableBody tr');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        function quickJumpToClass(className) {
+            document.getElementById('roleSelector').value = 'teacher';
+            switchRole('teacher');
+            document.getElementById('teacherClassSelect').value = className;
+            changeTeacherClass(className);
+        }
+
+        // Xuất file Excel (CSV định dạng UTF-8 với BOM chuẩn Bộ GD&ĐT)
+        function exportExcelReport(type) {
+            const isWeek = type === 'week';
+            const title = isWeek ? 'BÁO CÁO CHUYÊN CẦN TUẦN' : 'BÁO CÁO THỐNG KÊ CHUYÊN CẦN THÁNG';
+            const now = new Date();
+            const dateStr = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+
+            let csvContent = "\uFEFF"; // UTF-8 BOM để Excel hiển thị đúng dấu tiếng Việt
+            csvContent += `"${SCHOOL_CONFIG.schoolName}"\r\n`;
+            csvContent += `"BỘ GIÁO DỤC VÀ ĐÀO TẠO - MẪU SỐ BC-08/BGDĐT"\r\n`;
+            csvContent += `"${title} - NĂM HỌC ${SCHOOL_CONFIG.academicYear}"\r\n`;
+            csvContent += `"Ngày xuất báo cáo: ${dateStr}"\r\n`;
+            csvContent += `"Dữ liệu tổng hợp: 21 Lớp toàn trường"\r\n\r\n`;
+
+            csvContent += `"STT","Mã Lớp","Khối","Giáo Viên Chủ Nhiệm","Tổng Sĩ Số","Có Mặt","Vắng Không Phép","Đi Muộn","Vắng Có Phép","Tỉ Lệ Chuyên Cần (%)"\r\n`;
+
+            let stt = 1;
+            let sumTotal = 0, sumPresent = 0, sumAbsent = 0, sumLate = 0, sumExcused = 0;
+
+            CLASS_NAMES.forEach(cName => {
+                const cls = memoryDatabase.classes[cName];
+                const sCount = cls.students.length;
+                let cPresent = 0, cAbsent = 0, cLate = 0, cExcused = 0;
+
+                cls.students.forEach(st => {
+                    if (st.status === 'present') cPresent++;
+                    else if (st.status === 'absent') cAbsent++;
+                    else if (st.status === 'late') cLate++;
+                    else if (st.status === 'excused') cExcused++;
+                });
+
+                sumTotal += sCount;
+                sumPresent += cPresent;
+                sumAbsent += cAbsent;
+                sumLate += cLate;
+                sumExcused += cExcused;
+
+                const rate = Math.round((cPresent / sCount) * 100);
+
+                csvContent += `"${stt++}","${cls.className}","${cls.grade}","${cls.homeroomTeacher}","${sCount}","${cPresent}","${cAbsent}","${cLate}","${cExcused}","${rate}%"\r\n`;
+            });
+
+            const overallRate = Math.round((sumPresent / sumTotal) * 100);
+            csvContent += `\r\n"TỔNG CỘNG","21 LỚP","","","${sumTotal}","${sumPresent}","${sumAbsent}","${sumLate}","${sumExcused}","${overallRate}%"\r\n`;
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Bao_Cao_Diem_Danh_${type.toUpperCase()}_BoGD&DT_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Xuất Báo Cáo Thành Công!',
+                html: `Đã tạo file Excel chuẩn <b>${title}</b> của Bộ GD&ĐT gồm đủ 21 lớp.<br><small class="text-muted">File đã được tải trực tiếp từ RAM máy tính.</small>`,
+                confirmButtonColor: '#198754'
+            });
+        }
+
+        /* =========================================================================
+           MODULE 2: GIÁO VIÊN (TEACHER VIEW)
+           ========================================================================= */
+        function populateTeacherClassSelect() {
+            const select = document.getElementById('teacherClassSelect');
+            select.innerHTML = '';
+            CLASS_NAMES.forEach(cName => {
+                const opt = document.createElement('option');
+                opt.value = cName;
+                opt.textContent = `Lớp ${cName} (${memoryDatabase.classes[cName].homeroomTeacher})`;
+                if (cName === currentSelectedClass) opt.selected = true;
+                select.appendChild(opt);
+            });
+            updateTeacherLeaveBadge();
+        }
+
+        function changeTeacherClass(className) {
+            currentSelectedClass = className;
+            renderTeacherStudentGrid();
+        }
+
+        function renderTeacherStudentGrid() {
+            const container = document.getElementById('studentGridContainer');
+            container.innerHTML = '';
+            const cls = memoryDatabase.classes[currentSelectedClass];
+
+            cls.students.forEach((student, index) => {
+                const col = document.createElement('div');
+                col.className = 'col-12 col-sm-6 col-md-4 col-lg-3';
+
+                let statusClass = 'status-present';
+                let statusLabel = 'Có mặt';
+                let statusIcon = 'bi-check-circle-fill';
+
+                if (student.status === 'absent') {
+                    statusClass = 'status-absent';
+                    statusLabel = 'Vắng';
+                    statusIcon = 'bi-x-circle-fill';
+                } else if (student.status === 'late') {
+                    statusClass = 'status-late';
+                    statusLabel = 'Muộn';
+                    statusIcon = 'bi-clock-fill';
+                } else if (student.status === 'excused') {
+                    statusClass = 'status-excused';
+                    statusLabel = 'Vắng có phép';
+                    statusIcon = 'bi-file-earmark-medical-fill';
+                }
+
+                col.innerHTML = `
+                    <div class="card p-3 student-card ${statusClass}" onclick="cycleStudentStatus('${currentSelectedClass}', ${index})">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="badge bg-white text-dark border shadow-sm">#${index + 1}</span>
+                            <span class="badge bg-white text-dark border shadow-sm fw-semibold">
+                                <i class="bi ${statusIcon} me-1"></i>${statusLabel}
+                            </span>
+                        </div>
+                        <div class="mt-2 text-center">
+                            <h6 class="fw-bold mb-1">${student.name}</h6>
+                            <div class="small opacity-75">${student.id}</div>
+                        </div>
+                        <div class="mt-2 pt-2 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center fs-7">
+                            <span class="opacity-75"><i class="bi bi-clock me-1"></i>${student.checkinTime}</span>
+                            ${student.note ? `<span class="badge bg-warning text-dark text-truncate" style="max-width: 110px;" title="${student.note}"><i class="bi bi-sticky-fill"></i> ${student.note}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(col);
+            });
+        }
+
+        // Nhấn vào học sinh để đổi nhanh trạng thái: Có mặt -> Vắng -> Muộn -> Vắng có phép -> Có mặt
+        function cycleStudentStatus(className, studentIndex) {
+            const student = memoryDatabase.classes[className].students[studentIndex];
+            const cycle = ['present', 'absent', 'late', 'excused'];
+            const nextIdx = (cycle.indexOf(student.status) + 1) % cycle.length;
+            student.status = cycle[nextIdx];
+
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+            if (student.status === 'present' || student.status === 'late') {
+                student.checkinTime = timeStr;
+            } else {
+                student.checkinTime = '--:--:--';
+            }
+
+            renderTeacherStudentGrid();
+        }
+
+        function markAllPresent() {
+            const cls = memoryDatabase.classes[currentSelectedClass];
+            cls.students.forEach(st => {
+                // Giữ nguyên các bạn đã có đơn nghỉ phép đã duyệt
+                if (st.status !== 'excused') {
+                    st.status = 'present';
+                    st.checkinTime = '07:15:00';
+                }
+            });
+            renderTeacherStudentGrid();
+            Swal.fire({
+                icon: 'success',
+                title: 'Thao tác hoàn tất',
+                text: `Đã đánh dấu Có mặt cho toàn bộ học sinh lớp ${currentSelectedClass} (ngoại trừ học sinh có phép).`,
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }
+
+        // Mở phiên điểm danh QR động
+        let qrCountdownTimer = null;
+        function openQRSession() {
+            document.getElementById('qrModalClass').textContent = currentSelectedClass;
+            generateNewQRSession();
+            const modal = new bootstrap.Modal(document.getElementById('qrModal'));
+            modal.show();
+        }
+
+        function generateNewQRSession() {
+            // Tạo token ngẫu nhiên
+            const token = "ATTEND-" + currentSelectedClass + "-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+            memoryDatabase.qrSession.token = token;
+            memoryDatabase.qrSession.expiresAt = Date.now() + 5 * 60 * 1000; // 5 phút
+
+            document.getElementById('qrTokenDisplay').textContent = token;
+
+            // Sử dụng API qrserver công cộng theo yêu cầu
+            const qrData = encodeURIComponent(`https://edu-attend.local/checkin?class=${currentSelectedClass}&token=${token}&ts=${Date.now()}`);
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${qrData}&color=1e3c72`;
+            document.getElementById('qrImageElement').src = qrUrl;
+
+            // Đếm ngược 5 phút tự hủy
+            if (qrCountdownTimer) clearInterval(qrCountdownTimer);
+            updateQRCountdown();
+            qrCountdownTimer = setInterval(updateQRCountdown, 1000);
+        }
+
+        function updateQRCountdown() {
+            const timeLeft = Math.max(0, Math.floor((memoryDatabase.qrSession.expiresAt - Date.now()) / 1000));
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const timerEl = document.getElementById('qrTimer');
+            if (timerEl) {
+                timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+
+            if (timeLeft <= 0) {
+                clearInterval(qrCountdownTimer);
+                if (timerEl) timerEl.textContent = "HẾT HẠN - ĐÃ TỰ HỦY!";
+                document.getElementById('qrImageElement').src = "https://dummyimage.com/250x250/cccccc/000000.png&text=MA+DA+HET+HAN";
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Mã QR Đã Tự Hủy!',
+                    text: 'Phiên điểm danh 5 phút đã kết thúc để chống gian lận chia sẻ ảnh mã từ xa.',
+                    confirmButtonText: 'Tạo mã mới'
+                }).then((res) => {
+                    if (res.isConfirmed) generateNewQRSession();
+                });
+            }
+        }
+
+        // Modal duyệt đơn xin nghỉ
+        function updateTeacherLeaveBadge() {
+            const pendingCount = memoryDatabase.leaveRequests.filter(r => r.status === 'pending').length;
+            document.getElementById('teacherLeaveBadge').textContent = pendingCount;
+        }
+
+        function showLeaveRequestsModal() {
+            const tbody = document.getElementById('leaveModalTableBody');
+            tbody.innerHTML = '';
+
+            memoryDatabase.leaveRequests.forEach((req, idx) => {
+                const tr = document.createElement('tr');
+                const isApproved = req.status === 'approved';
+                tr.innerHTML = `
+                    <td><strong>${req.studentName}</strong> <br><small class="text-muted">${req.studentId}</small></td>
+                    <td><span class="badge bg-primary-subtle text-primary">${req.classId}</span></td>
+                    <td>${req.date}</td>
+                    <td>${req.reason}</td>
+                    <td>
+                        <span class="badge ${isApproved ? 'bg-success' : 'bg-warning text-dark'}">
+                            ${isApproved ? 'Đã duyệt' : 'Chờ duyệt'}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        ${!isApproved ? `
+                            <button class="btn btn-sm btn-success me-1" onclick="approveLeaveRequest('${req.id}')">Duyệt</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="rejectLeaveRequest('${req.id}')">Từ chối</button>
+                        ` : `<span class="text-success small fw-bold"><i class="bi bi-check-lg"></i> Tự động áp dụng</span>`}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const modal = new bootstrap.Modal(document.getElementById('leaveModal'));
+            modal.show();
+        }
+
+        function approveLeaveRequest(requestId) {
+            const req = memoryDatabase.leaveRequests.find(r => r.id === requestId);
+            if (req) {
+                req.status = 'approved';
+                // Tự động chuyển trạng thái học sinh trong lớp thành "Vắng có phép"
+                const cls = memoryDatabase.classes[req.classId];
+                if (cls) {
+                    const st = cls.students.find(s => s.id === req.studentId);
+                    if (st) {
+                        st.status = 'excused';
+                        st.note = 'Đơn nghỉ phép đã duyệt';
+                    }
+                }
+                updateTeacherLeaveBadge();
+                renderTeacherStudentGrid();
+                showLeaveRequestsModal(); // refresh modal
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Đã duyệt đơn xin phép!',
+                    text: `Học sinh ${req.studentName} trên màn hình giáo viên đã tự động chuyển sang "Vắng có phép" (Xám).`,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        }
+
+        function rejectLeaveRequest(requestId) {
+            const req = memoryDatabase.leaveRequests.find(r => r.id === requestId);
+            if (req) {
+                req.status = 'rejected';
+                updateTeacherLeaveBadge();
+                showLeaveRequestsModal();
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Đã từ chối đơn',
+                    timer: 1000,
+                    showConfirmButton: false
+                });
+            }
+        }
+
+        /* =========================================================================
+           MODULE 3: HỌC SINH (STUDENT VIEW)
+           ========================================================================= */
+        function renderStudentView() {
+            // Lấy thông tin học sinh đầu tiên của lớp 10A1 làm đại diện demo
+            const student = memoryDatabase.classes["10A1"].students[0];
+            document.getElementById('currentStudentName').textContent = student.name;
+
+            const statusEl = document.getElementById('todayStatusText');
+            const timeEl = document.getElementById('todayCheckinTime');
+
+            if (student.status === 'present') {
+                statusEl.className = 'fw-bold mb-0 text-success';
+                statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> ĐÃ ĐIỂM DANH CÓ MẶT';
+                timeEl.textContent = `Ghi nhận lúc: ${student.checkinTime}`;
+            } else if (student.status === 'late') {
+                statusEl.className = 'fw-bold mb-0 text-warning';
+                statusEl.innerHTML = '<i class="bi bi-clock-fill me-1"></i> ĐIỂM DANH ĐI MUỘN';
+                timeEl.textContent = `Ghi nhận lúc: ${student.checkinTime}`;
+            } else if (student.status === 'excused') {
+                statusEl.className = 'fw-bold mb-0 text-secondary';
+                statusEl.innerHTML = '<i class="bi bi-file-earmark-medical-fill me-1"></i> VẮNG CÓ PHÉP';
+                timeEl.textContent = `Lý do: Đơn xin phép đã được duyệt`;
+            } else {
+                statusEl.className = 'fw-bold mb-0 text-danger';
+                statusEl.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> CHƯA ĐIỂM DANH HÔM NAY';
+                timeEl.textContent = 'Vui lòng xác nhận điểm danh tại lớp';
+            }
+
+            renderStudentMonthlyHistory();
+        }
+
+        // Bấm nút: Xác nhận điểm danh nhanh tại lớp
+        function studentPerformCheckin() {
+            // 1. Kiểm tra chống gian lận IP nội bộ
+            if (!verifyInternalIP()) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'TỪ CHỐI ĐIỂM DANH TỪ XA!',
+                    html: `
+                        <div class="text-danger fw-bold mb-2">Phát hiện địa chỉ IP không hợp lệ!</div>
+                        <p class="small text-secondary mb-2">IP của bạn: <code>${currentClientNetwork.ip}</code> (Mạng ngoài trường)</p>
+                        <p class="small mb-0">Hệ thống yêu cầu phải kết nối đúng dải <b>Wi-Fi Trường Học (192.168.1.x)</b> để chống điểm danh hộ từ xa hoặc trốn học.</p>
+                    `,
+                    footer: '<span class="text-muted small">Vui lòng kết nối Wi-Fi phòng học hoặc thử đổi Wi-Fi ở góc trên màn hình.</span>',
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: 'Tôi hiểu'
+                });
+                return;
+            }
+
+            // 2. Nếu IP hợp lệ, thực hiện điểm danh thành công
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            
+            // Cập nhật trạng thái học sinh
+            const student = memoryDatabase.classes["10A1"].students[0];
+            student.status = 'present';
+            student.checkinTime = timeStr;
+
+            renderStudentView();
+
+            Swal.fire({
+                icon: 'success',
+                title: 'ĐIỂM DANH THÀNH CÔNG!',
+                html: `
+                    <div class="text-success fw-bold mb-2">Học sinh: ${student.name}</div>
+                    <p class="mb-1">Thời gian: <b>${timeStr}</b></p>
+                    <p class="small text-muted mb-0"><i class="bi bi-shield-check text-success"></i> Đã xác thực mạng nội bộ trường học (IP: ${currentClientNetwork.ip})</p>
+                `,
+                confirmButtonColor: '#198754'
+            });
+        }
+
+        // Đơn xin nghỉ phép trực tuyến từ học sinh
+        function handleStudentSubmitLeave(e) {
+            e.preventDefault();
+            const studentId = document.getElementById('studentLeaveSelect').value;
+            const studentSelect = document.getElementById('studentLeaveSelect');
+            const studentName = studentSelect.options[studentSelect.selectedIndex].text.split('(')[0].trim();
+            const reason = document.getElementById('leaveReason').value;
+            const date = document.getElementById('leaveDate').value;
+
+            const newReq = {
+                id: "LR-" + Math.floor(100 + Math.random() * 900),
+                studentId: studentId,
+                studentName: studentName,
+                classId: "10A1",
+                date: date,
+                reason: reason,
+                status: "pending"
+            };
+
+            memoryDatabase.leaveRequests.push(newReq);
+            updateTeacherLeaveBadge();
+            document.getElementById('leaveRequestForm').reset();
+            document.getElementById('leaveDate').value = new Date().toISOString().split('T')[0];
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Gửi Đơn Thành Công!',
+                html: `Đơn xin nghỉ phép của <b>${studentName}</b> đã được gửi tới Giáo viên.<br>Khi giáo viên duyệt, trạng thái sẽ tự động đổi sang <b>Vắng có phép</b>.`,
+                confirmButtonColor: '#1e3c72'
+            });
+        }
+
+        // Lịch sử chuyên cần trong tháng
+        function renderStudentMonthlyHistory() {
+            const tbody = document.getElementById('studentHistoryTableBody');
+            tbody.innerHTML = '';
+
+            const historyRecords = [
+                { date: "06/10/2026", session: "Sáng", status: "present", time: "07:15:20", note: "Đúng giờ" },
+                { date: "05/10/2026", session: "Sáng", status: "present", time: "07:12:45", note: "Đúng giờ" },
+                { date: "04/10/2026", session: "Sáng", status: "late", time: "07:38:10", note: "Kẹt xe cầu vượt" },
+                { date: "03/10/2026", session: "Sáng", status: "present", time: "07:10:05", note: "Đúng giờ" },
+                { date: "02/10/2026", session: "Sáng", status: "excused", time: "--:--:--", note: "Khám định kỳ răng miệng" },
+                { date: "01/10/2026", session: "Sáng", status: "present", time: "07:14:50", note: "Đúng giờ" },
+                { date: "30/09/2026", session: "Sáng", status: "present", time: "07:05:12", note: "Đúng giờ" }
+            ];
+
+            historyRecords.forEach(rec => {
+                let badge = '<span class="badge bg-success">Có mặt</span>';
+                if (rec.status === 'late') badge = '<span class="badge bg-warning text-dark">Đi muộn</span>';
+                if (rec.status === 'excused') badge = '<span class="badge bg-secondary">Vắng có phép</span>';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="fw-semibold">${rec.date}</td>
+                    <td>${rec.session}</td>
+                    <td>${badge}</td>
+                    <td><code>${rec.time}</code></td>
+                    <td class="text-muted small">${rec.note}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        /* =========================================================================
+           KHỞI CHẠY HỆ THỐNG
+           ========================================================================= */
+        window.addEventListener('DOMContentLoaded', () => {
+            initMemoryDatabase();
+            // Khởi tạo ngày cho form nghỉ phép
+            document.getElementById('leaveDate').value = new Date().toISOString().split('T')[0];
+            // Mặc định mở giao diện Giáo Viên
+            switchRole('teacher');
+        });
+    </script>
+</body>
+</html>
